@@ -108,7 +108,7 @@ Cada fase reduce el conjunto que pasa a la siguiente — lo caro (llamadas a API
 | **A — Idempotencia** | `ObtenerGuiasYaProcesadasAsync`: ¿esta guía ya tiene una fila con `Validacion="OK"` en `InventarioDevolucion`? | 1 query por trozo de 500 |
 | **A — Match directo** | Busca por `GuiaDevolucion` y por `Numeropreenvio` en `PedidosInter`, en un solo `$in` por lote (nunca una consulta por guía) | 2 queries por lote |
 | **B — Estrategias por formato** | Solo lo que Mongo no resolvió. `FactoryEstrategiaDevolucion` reparte cada guía a `EstrategiaConsultaExterna` (Inter o Envía) según el formato — ver [clientes de transportadora](infraestructura/clientes-transportadora.md) | 1 llamada HTTP por guía a la API externa, en paralelo acotado |
-| **C — Reintento con otra transportadora** | Solo las que fallaron con motivo `SinGuiaOriginalEnRespuesta` (sugiere que el ruteo por formato se equivocó) | Proporcional a los fallos, no al lote completo |
+| **C — Reintento con otra transportadora** | Guías rechazadas por `SinGuiaOriginalEnRespuesta`, `ErrorConsultaExterna` (la transportadora asignada rechazó explícitamente) o `GuiaNoExisteEnSistema` (ninguna reconoció el formato) — ver [ADR-005](adr/ADR-005-confiabilidad-inter.md) | Proporcional a los fallos, no al lote completo |
 | **D — Reglas transversales** | `ReglaPermisoTienda`, `ReglaPedidoAnulado` — se aplican DESPUÉS de resolver, sobre el pedido ya encontrado | En memoria, sin I/O |
 | **Escritura** | `MarcarDevolucionCompletadaAsync` + `RegistrarEnInventarioDevolucionAsync` + `ActualizarLoteAsync` (inventario), en ese orden obligatorio | 3 escrituras en bulk por lote, nunca una por guía |
 
@@ -152,7 +152,8 @@ La idempotencia filtra por `Validacion == "OK"` específicamente — una guía *
 | `CONCURRENCIA_ENVIA` | Guías en paralelo contra Envía (por defecto 5) | `WorkerHandler` |
 | `URL_SERVICIO_LOGIN`, `URL_SERVICIO_INTER`, `URL_SERVICIO_GUIA` | 3 URLs base distintas de Interrapidísimo (login, rastreo, estados) | `WorkerHandler` |
 | `ID_CLIENTE`, `USER_AUTH`, `TOKEN_AUTH` | Credenciales Inter, cifradas AES | `WorkerHandler` |
-| `CONCURRENCIA_INTER` | Guías en paralelo contra Inter (por defecto 10) | `WorkerHandler` |
+| `CONCURRENCIA_INTER` | Guías en paralelo contra Inter (por defecto 5, antes 10 — ver [ADR-005](adr/ADR-005-confiabilidad-inter.md)) | `WorkerHandler` |
+| `PAUSA_ENTRE_PETICIONES_INTER_MS` | Pausa entre tandas de peticiones a Inter, en ms (por defecto 300) — ver [ADR-005](adr/ADR-005-confiabilidad-inter.md) | `WorkerHandler` |
 | `MAXIMO_INTENTOS_CONSUMO` | (ver config PreProd) | `WorkerHandler` |
 | `MARGEN_CONTINUACION_SEGUNDOS` | Segundos de margen antes de pedir continuación. **`"0"` desactiva el chequeo de tiempo por completo** — SOLO para pruebas locales con el Mock Lambda Test Tool, cuyo `RemainingTime` nunca simula el timeout real. En real nunca debe estar en 0 | `WorkerHandler` |
 
@@ -180,6 +181,7 @@ La idempotencia filtra por `Validacion == "OK"` específicamente — una guía *
 | 2026-08-24 | Iker Acevedo | Rediseño de `JobDevolucion`: de guardar el detalle completo de cada guía a solo contadores + `Rechazadas` (ver [ADR-002](adr/ADR-002-jobdevolucion-solo-contadores.md)). Fix del bug de idempotencia que bloqueaba el reintento de guías rechazadas. |
 | 2026-08-25 | Iker Acevedo | `JsonStringEnumConverter` en `RespuestaHttp` para que los enums viajen como texto (antes como número), consistente con lo que ya guarda Mongo. `FechaInicio` expuesta en `EstadoJobResponse`. Despliegue a PreProd y validación end-to-end. |
 | 2026-08-26 | Iker Acevedo | `JobId` agregado a cada fila de `InventarioDevolucion` (ver [ADR-003](adr/ADR-003-jobid-en-inventariodevolucion.md)). Fechas propias del módulo migradas a UTC real, dejando la excepción deliberada de `PedidosInter."Fecha Dev Completada"` en hora Colombia (ver [ADR-004](adr/ADR-004-fechas-utc.md)). Fix de un `CS0844` (propiedad duplicada en inicializador) en `ConsultarJobUseCase`. |
+| 2026-09-02 | Iker Acevedo | Confiabilidad de `ClienteInter`: token real de 30s (antes se asumían 20 min), reintentos con backoff ante 429/5xx, pacing entre tandas, logging de fallos HTTP. Fallback cruzado de transportadora ampliado a 3 motivos de rechazo. Ver [ADR-005](adr/ADR-005-confiabilidad-inter.md). |
 
 ---
 

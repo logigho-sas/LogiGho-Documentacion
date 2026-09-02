@@ -119,6 +119,7 @@ nav:
                   - JobDevolucion (ADR-002): backend/lambdas-dotnet/aplicacion/Logigho/ApiLambdaDevolucionesMasivo/adr/ADR-002-jobdevolucion-solo-contadores.md
                   - JobId en Inventario (ADR-003): backend/lambdas-dotnet/aplicacion/Logigho/ApiLambdaDevolucionesMasivo/adr/ADR-003-jobid-en-inventariodevolucion.md
                   - Fechas UTC (ADR-004): backend/lambdas-dotnet/aplicacion/Logigho/ApiLambdaDevolucionesMasivo/adr/ADR-004-fechas-utc.md
+                  - Confiabilidad Inter (ADR-005): backend/lambdas-dotnet/aplicacion/Logigho/ApiLambdaDevolucionesMasivo/adr/ADR-005-confiabilidad-inter.md
           - Integración Pancake:
               - Estadísticas de Cuentas (Marketing):
                   - Descripción general: backend/pancake/overview.md
