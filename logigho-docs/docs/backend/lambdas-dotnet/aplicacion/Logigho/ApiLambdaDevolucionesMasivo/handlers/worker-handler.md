@@ -46,7 +46,7 @@ EjecutarAsync(evento, contexto)
 
   Construir(contexto)                        cableado manual de dependencias (sin contenedor DI)
     DevolucionRepository, JobRepository, UsuarioRepository
-    estrategias = [ EstrategiaConsultaExterna(ClienteEnvia), EstrategiaConsultaExterna(ClienteInter) ]
+    estrategias = [ EstrategiaConsultaExterna(ClienteInter), EstrategiaConsultaExterna(ClienteEnvia) ]
     reglas = [ ReglaPermisoTienda, ReglaPedidoAnulado ]
     FactoryEstrategiaDevolucion(estrategias, EstrategiaSinResolucion)
     ServicioInventario
@@ -68,6 +68,8 @@ EjecutarAsync(evento, contexto)
 `Construir(contexto)` arma todas las dependencias a mano, sin un contenedor de inyección de dependencias. Con pocas piezas es más explícito y evita el riesgo real de registrar como `Transient` algo que debería ser `Singleton` — un error de configuración de DI que ya costó caro en otro proyecto del ecosistema (SigueTuEnvio).
 
 Registrar una transportadora nueva es agregar una línea al arreglo `estrategias` — ni el `FactoryEstrategiaDevolucion` ni `ProcesarJobUseCase` cambian (Open/Closed).
+
+**El orden del arreglo importa desde [ADR-005](../adr/ADR-005-confiabilidad-inter.md):** además de decidir qué formato se prueba primero en la clasificación (irrelevante entre Inter/Envía, porque 12 y 13 dígitos son excluyentes), ahora define en qué orden `ObtenerAlternativas` prueba las transportadoras cuando una guía rechazada se reintenta con otra. Inter va primero porque es la transportadora con más volumen en la plataforma.
 
 ---
 
